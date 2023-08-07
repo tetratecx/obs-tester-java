@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Tetrate Connection Tester</title>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" crossorigin="anonymous">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap-theme.min.css" crossorigin="anonymous">
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" crossorigin="anonymous"></script>
+		<style>
+		.jumbotron {
+			text-align: center;
+		}
+		.header h3 {
+			color: white;
+		}
+		</style>
+		<script>
+			$(function() {
+				queryString = window.location.search;
+				urlParams = new URLSearchParams(queryString);
+				urlValue = urlParams.get('url')
+				if(urlValue) {
+					$("#url").val(urlValue)
+				} else {
+					$("#url").attr("placeholder", "ex...  http://backend")
+				}
+			});
+	
+			function handle(event) {
+				if (event.keyCode == 13) {
+					event.preventDefault();
+					invoke();
+				}
+			};
+	
+			function invoke() {
+				var endpoint = $('#url').val();
+				var backendUrl = "/p/";
+				if(endpoint == "") {
+					backendUrl = "/";
+				} else if(endpoint != "" && 
+					(endpoint.includes('http://') || endpoint.includes('https://'))) {
+					const url = new URL(endpoint);
+					backendUrl += url.protocol.slice(0,-1) + "/" + url.host + url.port + url.pathname + url.search
+	
+					if(backendUrl.slice(-1) == "/") backendUrl = backendUrl.slice(0,-1)
+	
+				} else if(endpoint != "") {
+					backendUrl += "http/" + endpoint;
+				} 
+	
+				var headers = $('#headers');
+				headers.empty();
+				var body = $('#body');
+				body.empty();
+				var headers = $('#headers');
+				headers.empty();
+				var rc = $('#responseCode');
+				rc.empty();
+				$.ajax({
+					url: backendUrl,
+					crossDomain: true,
+					headers: {
+						"x-session": $('#sessionId').val(),
+						"X-B3-Sampled": 1
+					},
+					success: function(res, status, xhr) {
+						rc.append("<p><b>HTTP " + xhr.status + "</b></p>");
+
+						const h = xhr.getAllResponseHeaders();
+						const arr = h.trim().split(/[\r\n]+/);
+						arr.forEach(function (line) {
+							headers.append("<p>" + line + "</p>");
+						});
+	
+						//handle html, or json
+						var contentType = xhr.getResponseHeader("content-type").split(";")[0];
+						switch (contentType) {
+							case "application/json":
+								body.append("<pre id='json'>" + JSON.stringify(res, undefined, 2) + "</pre>");
+								break;
+							case "text/html":
+								body.append("<iframe id='html' width='100%' srcdoc='" + res + "' />");
+								break;
+							default:   //handle like text
+								body.append("<pre id='text'>" + res + "</pre>");
+						}						
+					},
+					error: function (xhr, textStatus, error) {
+						rc.append("<p><b>HTTP " + xhr.status + "</b></p>");
+						const h = xhr.getAllResponseHeaders();
+						const arr = h.trim().split(/[\r\n]+/);
+						arr.forEach(function (line) {
+							headers.append("<p>" + line + "</p>");
+						});
+	
+						//handle html, or json
+						var contentType = xhr.getResponseHeader("content-type").split(";")[0];
+						switch (contentType) {
+							case "application/json":
+								body.append("<pre id='json'>" + JSON.stringify(xhr.responseJSON, undefined, 2) + "</pre>");
+								break;
+							case "text/html":
+								body.append("<iframe id='html' width='100%' srcdoc='" + res + "' />");
+								break;
+							default:   //handle like text
+								body.append("<pre id='text'>" + res + "</pre>");
+						}
+					}
+				});
+			}
+		</script>
+	</head>
+	<body>
+		<div class="container">
+			<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+				<div class="navbar-brand">	
+					<font size="14">			    
+				    Frontend Sample App<br>	
+					<span th:text="'Cluster: ' + ${cluster}" />
+				    </font>
+					<br><span th:text="'Namespace: ' + ${namespace}" />
+					<br><span th:text="'istio.io/rev: ' + ${revision}" />
+					<br><span th:text="'Served by: ' + ${pod}" />
+				</div>
+			</nav>
+			<div class="jumbotron">
+				<h2 class="display-4">Connection Test</h2>
+				<div class="input-group">
+					<div class="input-group-prepend">
+					  <span class="input-group-text" id="basic-addon1">Endpoint: </span>
+					</div>
+					<input id="url" type="text" class="form-control"  onkeypress="handle(event);">
+					<button class="btn btn-outline-success my-2 my-sm-0" onclick="invoke()">Test</button>
+				  </div>
+			</div>
+			<div class="container" id="responseCode">
+				<!-- <p><b>Response Code:</b></p> -->
+			</div>
+			<div class="container">
+				<p><b>Response Headers:</b></p>
+				<blockquote id="headers" />
+			</div>
+			<div class="container">
+				<p><b>Response Body:</b></p>
+				<div class="container" id="body"/>
+			</div>
+		</div>
+	</body>
+</html>

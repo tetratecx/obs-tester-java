@@ -19,26 +19,29 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.BufferingClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 
-@RestController
+@Controller
 public class AppController {
 
     private static final Logger logger = LoggerFactory.getLogger(AppController.class);
     
-	
-	// router.Methods("GET").Path("/connection").HandlerFunc(ep.connection)
 	// router.Methods("GET").Path("/ha").HandlerFunc(ep.ha)
 
     @Value("${service.name:-}")
@@ -56,6 +59,34 @@ public class AppController {
     @Value("${errors:0}")
     protected int errors;
     private final Random random = new Random();
+
+    @Value("${SIDECAR_STATUS:-}")
+    private String sidecarStatus;
+
+    @PostConstruct
+    public void postConstructInit() {
+        logger.info("post construction init...");  
+        if(!sidecarStatus.equalsIgnoreCase("-")) {
+            logger.info("\tinitializing revision name from sidecar metadata: {}", sidecarStatus); 
+            try {
+                ObjectMapper objectMapper = new ObjectMapper();
+                JsonNode json = objectMapper.readTree(sidecarStatus);
+                istioRevision = json.get("revision").asText("default");
+                logger.info("\trevision name: {}", istioRevision); 
+            } catch(Exception ex) { ex.printStackTrace(); }
+            
+        }
+    }
+
+    @GetMapping("/connection")
+	public String greeting(Model model) {
+		model.addAttribute("name", name);
+        model.addAttribute("cluster", clusterName);
+        model.addAttribute("namespace", namespace);
+        model.addAttribute("revision", istioRevision);
+        model.addAttribute("pod", podName);
+		return "connection";
+	}
 
     @GetMapping("/")
     public ResponseEntity<Map<String,?>> echo(@RequestHeader Map<String, String> headers) {
