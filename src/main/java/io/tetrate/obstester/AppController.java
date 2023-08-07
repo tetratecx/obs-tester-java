@@ -184,7 +184,7 @@ public class AppController {
             HttpHeaders responseHeaders = getHeaders(start);
             responseHeaders.add("Proxied-By", name);
             for(Map.Entry<String,String> header: resp.getHeaders().toSingleValueMap().entrySet()) {
-                responseHeaders.addIfAbsent(header.getKey(), header.getValue());
+                responseHeaders.add(header.getKey(), header.getValue());
             }
             responseHeaders.remove("host"); //try not to confuse Envoy
             responseHeaders.remove("Transfer-Encoding"); //this breaks envoy???
