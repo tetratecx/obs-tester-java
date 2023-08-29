@@ -7,15 +7,14 @@ service:
   revision: "-"
   cluster: "-"
 spring:
+  application:
+    name: obs-tester-java
   jackson:
     serialization:
       indent_output: true
 logging.pattern.level: "%5p [trace/span:%X{traceId:-},%X{spanId:-}]"
 logging.level.io.tetrate: DEBUG
 management:
-  zipkin:
-    tracing:
-      endpoint: http://zipkin.istio-system:9411/api/v2/spans
   endpoints:
     web:
       exposure:
